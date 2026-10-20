@@ -199,5 +199,8 @@ document.addEventListener("visibilitychange", () => {
 showTab("home");
 renderHome();
 
+// Work offline once the app has been opened online (service workers need https or localhost).
+if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js");
+
 // Ask the browser not to clear our data when it is short on space (it may say no).
 if (navigator.storage && navigator.storage.persist) navigator.storage.persist();

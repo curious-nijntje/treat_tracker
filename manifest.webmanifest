@@ -1,0 +1,14 @@
+{
+  "name": "Treat Tracker",
+  "short_name": "Treats",
+  "description": "Log sweet treats against a weekly limit and see them on a calendar.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#f7a8c4",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
