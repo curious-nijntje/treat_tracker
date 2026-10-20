@@ -43,7 +43,12 @@
       flex-direction: column;
       align-items: center;
     }
-    .day.empty { border: none; }
+    .day { cursor: pointer; }
+    .day.empty { border: none; cursor: default; }
+    .day.selected { background: #eef; }
+    .day-picker { margin-top: 1rem; }
+    .day-picker p { margin: 0 0 0.5rem; font-weight: bold; }
+    .day-picker button { font-size: 1rem; padding: 0.5rem 1rem; }
     .day.today { border-color: #333; border-width: 2px; }
     .day .icon { font-size: 1.25rem; line-height: 1.2; }
 
@@ -82,6 +87,12 @@
       <button id="next-month" aria-label="Next month">&rarr;</button>
     </div>
     <div id="calendar-grid" class="calendar-grid"></div>
+    <div id="day-picker" class="day-picker" hidden>
+      <p id="picked-date"></p>
+      <button id="pick-treat">Treat</button>
+      <button id="pick-star">Star</button>
+      <button id="pick-clear">Clear</button>
+    </div>
   </section>
 
   <nav class="tab-bar">

@@ -12,22 +12,38 @@ function renderHome() {
   document.getElementById("weekly-status").textContent = weeklyMessage(count, WEEKLY_LIMIT);
 }
 
-function logTreat() {
-  const today = toDateString(new Date());
-  // A day is either star or treat, never both: drop today's star first.
-  const entries = loadEntries().filter((e) => !(e.date === today && e.type === "star"));
-  entries.push({ id: Date.now().toString() + Math.random().toString(36).slice(2, 6), date: today, type: "treat" });
+function newEntry(date, type) {
+  return { id: Date.now().toString() + Math.random().toString(36).slice(2, 6), date, type };
+}
+
+// Each of these works on any date, past or present. A day is either one star
+// or one or more treats, never both.
+function addTreat(date) {
+  // Drop the day's star (if any), then add a treat. Calling again adds another.
+  const entries = loadEntries().filter((e) => !(e.date === date && e.type === "star"));
+  entries.push(newEntry(date, "treat"));
   saveEntries(entries);
+}
+
+function setStar(date) {
+  // Replaces any treats on the day with a single star.
+  const entries = loadEntries().filter((e) => e.date !== date);
+  entries.push(newEntry(date, "star"));
+  saveEntries(entries);
+}
+
+function clearDay(date) {
+  saveEntries(loadEntries().filter((e) => e.date !== date));
+}
+
+function logTreat() {
+  addTreat(toDateString(new Date()));
   renderHome();
   showTab("calendar");
 }
 
 function logNoTreat() {
-  const today = toDateString(new Date());
-  // A day is either star or treat, never both: drop everything on today, then add one star.
-  const entries = loadEntries().filter((e) => e.date !== today);
-  entries.push({ id: Date.now().toString() + Math.random().toString(36).slice(2, 6), date: today, type: "star" });
-  saveEntries(entries);
+  setStar(toDateString(new Date()));
   renderHome();
   showTab("calendar");
 }
@@ -84,11 +100,43 @@ function renderCalendar() {
     if (hasTreat || hasStar) {
       const icon = document.createElement("span");
       icon.className = "icon";
-      icon.textContent = hasTreat ? ICONS.treat : ICONS.star;
+      const treatCount = dayEntries.filter((e) => e.type === "treat").length;
+      // Show "x2" etc. when a day has more than one treat.
+      icon.textContent = hasTreat ? ICONS.treat + (treatCount > 1 ? "×" + treatCount : "") : ICONS.star;
       cell.appendChild(icon);
     }
+    if (dateString === selectedDate) cell.classList.add("selected");
+    cell.addEventListener("click", () => selectDay(dateString));
     grid.appendChild(cell);
   }
+
+  renderDayPicker();
+}
+
+// ---- Day picker (tap a day to choose treat, star or clear) ----
+
+let selectedDate = null;
+
+function selectDay(dateString) {
+  selectedDate = dateString;
+  renderCalendar();
+}
+
+function renderDayPicker() {
+  const picker = document.getElementById("day-picker");
+  picker.hidden = selectedDate === null;
+  if (selectedDate === null) return;
+
+  const [y, m, d] = selectedDate.split("-").map(Number);
+  document.getElementById("picked-date").textContent = new Date(y, m - 1, d)
+    .toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
+}
+
+function applyToSelected(action) {
+  if (selectedDate === null) return;
+  action(selectedDate);
+  renderHome();
+  renderCalendar();
 }
 
 function changeMonth(delta) {
@@ -119,6 +167,9 @@ document.getElementById("log-treat").addEventListener("click", logTreat);
 document.getElementById("no-treat").addEventListener("click", logNoTreat);
 document.getElementById("tab-home").addEventListener("click", () => showTab("home"));
 document.getElementById("tab-calendar").addEventListener("click", () => showTab("calendar"));
+document.getElementById("pick-treat").addEventListener("click", () => applyToSelected(addTreat));
+document.getElementById("pick-star").addEventListener("click", () => applyToSelected(setStar));
+document.getElementById("pick-clear").addEventListener("click", () => applyToSelected(clearDay));
 document.getElementById("prev-month").addEventListener("click", () => changeMonth(-1));
 document.getElementById("next-month").addEventListener("click", () => changeMonth(1));
 renderHome();
