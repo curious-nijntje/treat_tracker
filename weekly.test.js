@@ -103,8 +103,9 @@ test("Entries can arrive in any order", () => {
 
 // ---- Week streak ----
 // countWeekStreak(entries, today, limit): consecutive finished weeks, going back
-// from last week, with treats <= limit. The current week is still in progress so
-// it never counts. Weeks before the first entry are not counted.
+// from last week. A week counts only if it has at least one entry (star or
+// treat), so forgetting to log breaks the streak, and its treats are <= limit.
+// The current week is still in progress so it never counts.
 const treats = (startId, date, n) =>
   Array.from({ length: n }, (_, i) => treat(startId + i, date));
 
@@ -147,9 +148,25 @@ test("Streak: weeks before the first entry are not counted", () => {
   assert.strictEqual(countWeekStreak(entries, "2026-10-26", 3), 1);
 });
 
-test("Streak: empty weeks after the first entry count as met", () => {
-  const entries = [star(1, "2026-10-05")];
-  assert.strictEqual(countWeekStreak(entries, "2026-10-26", 3), 3);
+test("Streak: a week with nothing logged breaks it", () => {
+  const entries = [star(1, "2026-10-05")]; // Oct 12 and Oct 19 weeks are empty
+  assert.strictEqual(countWeekStreak(entries, "2026-10-26", 3), 0);
+});
+
+test("Streak: forgetting last week loses it, however good the weeks before", () => {
+  const entries = [...treats(1, "2026-10-07", 1), ...treats(10, "2026-10-14", 1)];
+  // Oct 5 and Oct 12 weeks are fine, but nothing was logged for the Oct 19 week.
+  assert.strictEqual(countWeekStreak(entries, "2026-10-26", 3), 0);
+});
+
+test("Streak: a week with only a star counts", () => {
+  const entries = [star(1, "2026-10-21")];
+  assert.strictEqual(countWeekStreak(entries, "2026-10-26", 3), 1);
+});
+
+test("Streak: an empty week in the middle ends the count there", () => {
+  const entries = [star(1, "2026-10-07"), star(2, "2026-10-21")]; // Oct 12 week empty
+  assert.strictEqual(countWeekStreak(entries, "2026-10-26", 3), 1);
 });
 
 test("Streak: first entry in the current week gives 0", () => {
@@ -158,13 +175,17 @@ test("Streak: first entry in the current week gives 0", () => {
 });
 
 test("Streak: runs across a New Year boundary", () => {
-  const entries = [star(1, "2026-12-15"), ...treats(10, "2026-12-30", 2), ...treats(20, "2027-01-06", 1)];
-  // Weeks of Jan 4, Dec 28, Dec 21 (empty, so met) and Dec 14.
-  assert.strictEqual(countWeekStreak(entries, "2027-01-12", 3), 4);
+  const entries = [
+    star(1, "2026-12-22"),
+    ...treats(10, "2026-12-30", 2),
+    ...treats(20, "2027-01-06", 1),
+  ];
+  // Weeks of Jan 4, Dec 28 and Dec 21.
+  assert.strictEqual(countWeekStreak(entries, "2027-01-12", 3), 3);
 });
 
-test("Streak: first entry may be unsorted and a star", () => {
-  const entries = [treat(1, "2026-10-21"), star(2, "2026-10-06")];
+test("Streak: entries in any order, stars and treats mixed", () => {
+  const entries = [treat(1, "2026-10-21"), star(2, "2026-10-14"), star(3, "2026-10-06")];
   assert.strictEqual(countWeekStreak(entries, "2026-10-26", 3), 3);
 });
 

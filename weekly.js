@@ -41,24 +41,22 @@ function countTreatsInWeek(entries, today) {
   ).length;
 }
 
-// Streak = finished weeks in a row, newest first, with treats <= limit.
-// The current week is still in progress, so it is never counted. Weeks before
-// the first entry were before the app was used, so they are not counted either.
+// Streak = finished weeks in a row, newest first. A week counts if it has at
+// least one entry (star or treat) and its treats are <= limit, so forgetting to
+// log a week ends the streak. The current week is still in progress, so it is
+// never counted.
 function countWeekStreak(entries, today, limit) {
-  if (entries.length === 0) return 0;
-
   // Count treats per week once, instead of re-scanning every entry for each week.
+  // A week with any entry gets a key, even if it has no treats.
   const treatsByWeek = {};
   for (const entry of entries) {
-    if (entry.type !== "treat") continue;
     const week = weekStart(entry.date);
-    treatsByWeek[week] = (treatsByWeek[week] || 0) + 1;
+    treatsByWeek[week] = (treatsByWeek[week] || 0) + (entry.type === "treat" ? 1 : 0);
   }
 
-  const firstWeek = weekStart(entries.map((e) => e.date).sort()[0]);
   let streak = 0;
-  for (let week = addDays(weekStart(today), -7); week >= firstWeek; week = addDays(week, -7)) {
-    if ((treatsByWeek[week] || 0) > limit) break;
+  for (let week = addDays(weekStart(today), -7); week in treatsByWeek; week = addDays(week, -7)) {
+    if (treatsByWeek[week] > limit) break;
     streak++;
   }
   return streak;

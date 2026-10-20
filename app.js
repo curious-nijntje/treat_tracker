@@ -21,7 +21,7 @@ function weeklyMessage(count, limit) {
 }
 
 function streakMessage(weeks) {
-  if (weeks === 0) return "Finish this week within your limit to start a streak.";
+  if (weeks === 0) return "Log this week and stay within your limit to start a streak.";
   return `\u{1F525} ${weeks} week streak`; // fire
 }
 
@@ -135,10 +135,44 @@ function showTab(name) {
   }
 }
 
+// ---- Backup ----
+
+function exportBackup() {
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(new Blob([makeBackup(loadEntries())], { type: "application/json" }));
+  link.download = `treat-tracker-backup-${todayString()}.json`;
+  link.click();
+  URL.revokeObjectURL(link.href);
+  $("backup-status").textContent = "Backup saved to your downloads.";
+}
+
+async function importBackup(file) {
+  try {
+    const imported = parseBackup(await file.text()); // checks everything before touching saved data
+    const current = loadEntries().length;
+    if (!confirm(`Replace your ${current} saved entries with the ${imported.length} in this backup?`)) {
+      $("backup-status").textContent = "Import cancelled.";
+      return;
+    }
+    saveEntries(imported);
+    renderHome();
+    $("backup-status").textContent = `Restored ${imported.length} entries.`;
+  } catch (e) {
+    $("backup-status").textContent = e.message;
+  }
+}
+
 // ---- Wiring ----
 
 $("log-treat").addEventListener("click", () => logToday(addTreat));
 $("no-treat").addEventListener("click", () => logToday(setStar));
+$("export-backup").addEventListener("click", exportBackup);
+$("import-backup").addEventListener("click", () => $("import-file").click());
+$("import-file").addEventListener("change", (event) => {
+  const file = event.target.files[0];
+  event.target.value = ""; // so choosing the same file again still triggers a change
+  if (file) importBackup(file);
+});
 $("tab-home").addEventListener("click", () => showTab("home"));
 $("tab-calendar").addEventListener("click", () => showTab("calendar"));
 $("prev-month").addEventListener("click", () => changeMonth(-1));
@@ -164,3 +198,6 @@ document.addEventListener("visibilitychange", () => {
 
 showTab("home");
 renderHome();
+
+// Ask the browser not to clear our data when it is short on space (it may say no).
+if (navigator.storage && navigator.storage.persist) navigator.storage.persist();

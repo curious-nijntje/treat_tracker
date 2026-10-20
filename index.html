@@ -14,6 +14,10 @@
 
     .view[hidden] { display: none; }
 
+    .backup { margin-top: 3rem; }
+    .backup h2 { font-size: 1rem; margin-bottom: 0.25rem; }
+    .hint { color: #666; font-size: 0.85rem; margin: 0 0 0.75rem; }
+
     /* Calendar */
     .month-header {
       display: flex;
@@ -85,6 +89,15 @@
     <p id="streak"></p>
     <button id="log-treat">Log treat</button>
     <button id="no-treat">No treat</button>
+
+    <section class="backup">
+      <h2>Backup</h2>
+      <p class="hint">Your data lives only on this device. Save a backup file now and then.</p>
+      <button id="export-backup">Export backup</button>
+      <button id="import-backup">Import backup</button>
+      <input id="import-file" type="file" accept=".json,application/json" hidden>
+      <p id="backup-status" role="status"></p>
+    </section>
   </section>
 
   <section id="view-calendar" class="view" hidden>

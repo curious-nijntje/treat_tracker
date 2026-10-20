@@ -30,6 +30,10 @@ One entry per tap, stored as a list: `{ id, date, type }`
 - Choosing treat on a day removes its star and adds a treat. Choosing treat again adds another.
 - Clear takes a day back to empty (this is how I fix a mistaken tap).
 
+## Streak and backup (added after v1 plan)
+- Streak = finished weeks in a row, newest first. A week counts only if it has at least one entry (star or treat) and treats are within the limit, so forgetting to log a week ends the streak. The current week never counts.
+- Backup: Home has Export backup (JSON file) and Import backup (replaces saved data after a confirm). `parseBackup` in storage.js validates everything before saving. Tests: `node weekly.test.js`, `node storage.test.js`.
+
 ## Screens
 Two tabs in a bottom bar: Home and Calendar.
 
