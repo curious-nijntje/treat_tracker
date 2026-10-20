@@ -21,5 +21,15 @@ function logTreat() {
   renderHome();
 }
 
+function logNoTreat() {
+  const today = toDateString(new Date());
+  // A day is either star or treat, never both: drop everything on today, then add one star.
+  const entries = loadEntries().filter((e) => e.date !== today);
+  entries.push({ id: Date.now().toString() + Math.random().toString(36).slice(2, 6), date: today, type: "star" });
+  saveEntries(entries);
+  renderHome();
+}
+
 document.getElementById("log-treat").addEventListener("click", logTreat);
+document.getElementById("no-treat").addEventListener("click", logNoTreat);
 renderHome();
