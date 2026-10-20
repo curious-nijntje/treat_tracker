@@ -8,16 +8,86 @@
     body {
       font-family: system-ui, sans-serif;
       margin: 0;
-      padding: 2rem 1rem;
+      padding: 2rem 1rem 5rem; /* bottom room for the tab bar */
       text-align: center;
     }
+
+    .view[hidden] { display: none; }
+
+    /* Calendar */
+    .month-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      max-width: 28rem;
+      margin: 0 auto 1rem;
+    }
+    .month-header h2 { margin: 0; font-size: 1.25rem; }
+    .month-header button { font-size: 1.25rem; padding: 0.25rem 0.75rem; }
+
+    .calendar-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 4px;
+      max-width: 28rem;
+      margin: 0 auto;
+    }
+    .weekday { font-size: 0.8rem; color: #666; padding-bottom: 0.25rem; }
+    .day {
+      aspect-ratio: 1;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      padding: 2px;
+      font-size: 0.8rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .day.empty { border: none; }
+    .day.today { border-color: #333; border-width: 2px; }
+    .day .icon { font-size: 1.25rem; line-height: 1.2; }
+
+    /* Bottom tab bar */
+    .tab-bar {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      display: flex;
+      border-top: 1px solid #ddd;
+      background: #fff;
+    }
+    .tab-bar button {
+      flex: 1;
+      padding: 1rem;
+      font-size: 1rem;
+      border: none;
+      background: none;
+    }
+    .tab-bar button.active { font-weight: bold; border-top: 3px solid #333; }
   </style>
 </head>
 <body>
-  <h1>Treat Tracker</h1>
-  <p id="weekly-status"></p>
-  <button id="log-treat">Log treat</button>
-  <button id="no-treat">No treat</button>
+  <section id="view-home" class="view">
+    <h1>Treat Tracker</h1>
+    <p id="weekly-status"></p>
+    <button id="log-treat">Log treat</button>
+    <button id="no-treat">No treat</button>
+  </section>
+
+  <section id="view-calendar" class="view" hidden>
+    <div class="month-header">
+      <button id="prev-month" aria-label="Previous month">&larr;</button>
+      <h2 id="month-title"></h2>
+      <button id="next-month" aria-label="Next month">&rarr;</button>
+    </div>
+    <div id="calendar-grid" class="calendar-grid"></div>
+  </section>
+
+  <nav class="tab-bar">
+    <button id="tab-home" class="active">Home</button>
+    <button id="tab-calendar">Calendar</button>
+  </nav>
 
   <script src="storage.js"></script>
   <script src="weekly.js"></script>
