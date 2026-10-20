@@ -1,6 +1,6 @@
 // Run with: node weekly.test.js
 const assert = require("node:assert");
-const { countTreatsInWeek } = require("./weekly.js");
+const { countTreatsInWeek, countWeekStreak } = require("./weekly.js");
 
 // Calendar reminder for Oct/Nov 2026:
 //   Mon Oct 19 ... Sun Oct 25 | Mon Oct 26 ... Sat Oct 31, Sun Nov 1
@@ -56,6 +56,62 @@ test("Stars are not counted, multiple treats on one day all are", () => {
 
 test("No entries gives 0", () => {
   assert.strictEqual(countTreatsInWeek([], "2026-10-20"), 0);
+});
+
+// ---- Week streak ----
+// countWeekStreak(entries, today, limit): consecutive finished weeks, going back
+// from last week, with treats <= limit. The current week is still in progress so
+// it never counts. Weeks before the first entry are not counted.
+const treats = (startId, date, n) =>
+  Array.from({ length: n }, (_, i) => treat(startId + i, date));
+
+test("Streak: no entries gives 0", () => {
+  assert.strictEqual(countWeekStreak([], "2026-10-26", 3), 0);
+});
+
+test("Streak: one finished week within the limit is a 1 week streak", () => {
+  const entries = treats(1, "2026-10-21", 2); // week of Oct 19
+  assert.strictEqual(countWeekStreak(entries, "2026-10-26", 3), 1);
+});
+
+test("Streak: exactly at the limit still counts", () => {
+  const entries = treats(1, "2026-10-21", 3);
+  assert.strictEqual(countWeekStreak(entries, "2026-10-26", 3), 1);
+});
+
+test("Streak: last week over the limit gives 0", () => {
+  const entries = treats(1, "2026-10-21", 4);
+  assert.strictEqual(countWeekStreak(entries, "2026-10-26", 3), 0);
+});
+
+test("Streak: consecutive weeks add up", () => {
+  const entries = [...treats(1, "2026-10-14", 3), ...treats(10, "2026-10-21", 3)];
+  assert.strictEqual(countWeekStreak(entries, "2026-10-26", 3), 2);
+});
+
+test("Streak: an older over-limit week breaks the count", () => {
+  const entries = [...treats(1, "2026-10-14", 4), ...treats(10, "2026-10-21", 1)];
+  assert.strictEqual(countWeekStreak(entries, "2026-10-26", 3), 1);
+});
+
+test("Streak: the current week, even over the limit, does not affect it", () => {
+  const entries = [...treats(1, "2026-10-21", 2), ...treats(10, "2026-10-27", 5)];
+  assert.strictEqual(countWeekStreak(entries, "2026-10-28", 3), 1);
+});
+
+test("Streak: weeks before the first entry are not counted", () => {
+  const entries = [star(1, "2026-10-22")];
+  assert.strictEqual(countWeekStreak(entries, "2026-10-26", 3), 1);
+});
+
+test("Streak: empty weeks after the first entry count as met", () => {
+  const entries = [star(1, "2026-10-05")];
+  assert.strictEqual(countWeekStreak(entries, "2026-10-26", 3), 3);
+});
+
+test("Streak: first entry in the current week gives 0", () => {
+  const entries = [treat(1, "2026-10-27")];
+  assert.strictEqual(countWeekStreak(entries, "2026-10-28", 3), 0);
 });
 
 let failed = 0;

@@ -7,9 +7,18 @@ function weeklyMessage(count, limit) {
   return `You've had ${count}/${limit} treats this week.`;
 }
 
+function streakMessage(weeks) {
+  if (weeks === 0) return "Finish this week within your limit to start a streak.";
+  return `\u{1F525} ${weeks} week streak`; // fire
+}
+
 function renderHome() {
-  const count = countTreatsInWeek(loadEntries(), toDateString(new Date()));
-  document.getElementById("weekly-status").textContent = weeklyMessage(count, WEEKLY_LIMIT);
+  const entries = loadEntries();
+  const today = toDateString(new Date());
+  document.getElementById("weekly-status").textContent =
+    weeklyMessage(countTreatsInWeek(entries, today), WEEKLY_LIMIT);
+  document.getElementById("streak").textContent =
+    streakMessage(countWeekStreak(entries, today, WEEKLY_LIMIT));
 }
 
 function newEntry(date, type) {

@@ -7,22 +7,45 @@
 //
 // Reminder: dates are plain text, never timestamps.
 function countTreatsInWeek(entries, today) {
-  // Build dates from numbers (not new Date("YYYY-MM-DD"), which is parsed as UTC).
-  const [year, month, day] = today.split("-").map(Number);
-  const date = new Date(year, month - 1, day);
-
-  // getDay(): Sunday is 0, so Sunday goes back 6 days to reach Monday.
-  const daysSinceMonday = (date.getDay() + 6) % 7;
-  const monday = new Date(year, month - 1, day - daysSinceMonday);
-  const sunday = new Date(year, month - 1, day - daysSinceMonday + 6);
-
-  const start = toDateString(monday);
-  const end = toDateString(sunday);
+  const start = weekStart(today);
+  const end = addDays(start, 6);
 
   // YYYY-MM-DD strings sort in date order, so plain string comparison works.
   return entries.filter(
     (entry) => entry.type === "treat" && entry.date >= start && entry.date <= end
   ).length;
+}
+
+// The Monday of the week containing `dateString`, as "YYYY-MM-DD".
+function weekStart(dateString) {
+  // Build dates from numbers (not new Date("YYYY-MM-DD"), which is parsed as UTC).
+  const [year, month, day] = dateString.split("-").map(Number);
+  const date = new Date(year, month - 1, day);
+  // getDay(): Sunday is 0, so Sunday goes back 6 days to reach Monday.
+  const daysSinceMonday = (date.getDay() + 6) % 7;
+  return toDateString(new Date(year, month - 1, day - daysSinceMonday));
+}
+
+function addDays(dateString, n) {
+  const [year, month, day] = dateString.split("-").map(Number);
+  return toDateString(new Date(year, month - 1, day + n));
+}
+
+// Streak = finished weeks in a row, newest first, with treats <= limit.
+// The current week is still in progress, so it is never counted. Weeks before
+// the first entry were before the app was used, so they are not counted either.
+function countWeekStreak(entries, today, limit) {
+  if (entries.length === 0) return 0;
+
+  const firstWeek = weekStart(entries.reduce((a, e) => (e.date < a ? e.date : a), entries[0].date));
+  let week = addDays(weekStart(today), -7); // last week's Monday
+  let streak = 0;
+
+  while (week >= firstWeek && countTreatsInWeek(entries, week) <= limit) {
+    streak++;
+    week = addDays(week, -7);
+  }
+  return streak;
 }
 
 // Not toISOString(): that converts to UTC and can shift the day.
@@ -35,5 +58,5 @@ function toDateString(date) {
 
 // Lets the tests load this file in node; browsers ignore it.
 if (typeof module !== "undefined") {
-  module.exports = { countTreatsInWeek };
+  module.exports = { countTreatsInWeek, countWeekStreak };
 }
