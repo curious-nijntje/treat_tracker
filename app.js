@@ -1,6 +1,19 @@
 // Settings. Kept here so the limit is never hardcoded in the logic.
 const WEEKLY_LIMIT = 3;
 
+const ICONS = { treat: "\u{1F9C1}", star: "⭐" }; // cupcake, star
+const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+// Screen state. The shown month is 0-11, like JS Dates.
+let shownYear;
+let shownMonth;
+let selectedDate = null;
+
+const $ = (id) => document.getElementById(id);
+const todayString = () => toDateString(new Date());
+
+// ---- Home ----
+
 function weeklyMessage(count, limit) {
   if (count === limit) return `This week limit ${count}/${limit} reached`;
   if (count > limit) return `You have had ${count}/${limit} treats this week.`;
@@ -14,138 +27,80 @@ function streakMessage(weeks) {
 
 function renderHome() {
   const entries = loadEntries();
-  const today = toDateString(new Date());
-  document.getElementById("weekly-status").textContent =
-    weeklyMessage(countTreatsInWeek(entries, today), WEEKLY_LIMIT);
-  document.getElementById("streak").textContent =
-    streakMessage(countWeekStreak(entries, today, WEEKLY_LIMIT));
+  const today = todayString();
+  $("weekly-status").textContent = weeklyMessage(countTreatsInWeek(entries, today), WEEKLY_LIMIT);
+  $("streak").textContent = streakMessage(countWeekStreak(entries, today, WEEKLY_LIMIT));
 }
+
+// ---- Changing a day (works on any date, past or present) ----
+// A day is either one star or one or more treats, never both.
 
 function newEntry(date, type) {
   return { id: Date.now().toString() + Math.random().toString(36).slice(2, 6), date, type };
 }
 
-// Each of these works on any date, past or present. A day is either one star
-// or one or more treats, never both.
 function addTreat(date) {
   // Drop the day's star (if any), then add a treat. Calling again adds another.
   const entries = loadEntries().filter((e) => !(e.date === date && e.type === "star"));
-  entries.push(newEntry(date, "treat"));
-  saveEntries(entries);
+  saveEntries([...entries, newEntry(date, "treat")]);
 }
 
 function setStar(date) {
   // Replaces any treats on the day with a single star.
   const entries = loadEntries().filter((e) => e.date !== date);
-  entries.push(newEntry(date, "star"));
-  saveEntries(entries);
+  saveEntries([...entries, newEntry(date, "star")]);
 }
 
 function clearDay(date) {
   saveEntries(loadEntries().filter((e) => e.date !== date));
 }
 
-function logTreat() {
-  addTreat(toDateString(new Date()));
-  renderHome();
-  showTab("calendar");
-}
-
-function logNoTreat() {
-  setStar(toDateString(new Date()));
+// Home buttons: change today, then show it on the Calendar.
+function logToday(action) {
+  action(todayString());
   renderHome();
   showTab("calendar");
 }
 
 // ---- Calendar ----
 
-const ICONS = { treat: "\u{1F9C1}", star: "⭐" }; // cupcake, star
-const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-
-// The month on screen. Month is 0-11, like JS Dates.
-let shownYear = new Date().getFullYear();
-let shownMonth = new Date().getMonth();
-
 function renderCalendar() {
-  const entries = loadEntries();
-  const today = toDateString(new Date());
-
-  document.getElementById("month-title").textContent = new Date(shownYear, shownMonth, 1)
-    .toLocaleString("en-US", { month: "long", year: "numeric" });
-
-  const grid = document.getElementById("calendar-grid");
-  grid.innerHTML = "";
-
-  for (const name of WEEKDAYS) {
-    const cell = document.createElement("div");
-    cell.className = "weekday";
-    cell.textContent = name;
-    grid.appendChild(cell);
+  // Group the entries by date once, instead of searching them for every day.
+  const byDate = {};
+  for (const e of loadEntries()) {
+    const day = (byDate[e.date] = byDate[e.date] || { treats: 0, star: false });
+    if (e.type === "treat") day.treats++;
+    else day.star = true;
   }
+
+  $("month-title").textContent = new Date(shownYear, shownMonth, 1)
+    .toLocaleString("en-US", { month: "long", year: "numeric" });
 
   // Blank cells before the 1st so it lands under the right weekday (Monday = column 0).
   const blanks = (new Date(shownYear, shownMonth, 1).getDay() + 6) % 7;
-  for (let i = 0; i < blanks; i++) {
-    const cell = document.createElement("div");
-    cell.className = "day empty";
-    grid.appendChild(cell);
-  }
-
   const daysInMonth = new Date(shownYear, shownMonth + 1, 0).getDate();
-  for (let day = 1; day <= daysInMonth; day++) {
-    const dateString = toDateString(new Date(shownYear, shownMonth, day));
-    const dayEntries = entries.filter((e) => e.date === dateString);
-    const hasTreat = dayEntries.some((e) => e.type === "treat");
-    const hasStar = dayEntries.some((e) => e.type === "star");
+  const today = todayString();
 
-    const cell = document.createElement("div");
-    cell.className = "day" + (dateString === today ? " today" : "");
-    cell.dataset.date = dateString;
-
-    const number = document.createElement("span");
-    number.textContent = day;
-    cell.appendChild(number);
-
-    if (hasTreat || hasStar) {
-      const icon = document.createElement("span");
-      icon.className = "icon";
-      const treatCount = dayEntries.filter((e) => e.type === "treat").length;
-      // Show "x2" etc. when a day has more than one treat.
-      icon.textContent = hasTreat ? ICONS.treat + (treatCount > 1 ? "×" + treatCount : "") : ICONS.star;
-      cell.appendChild(icon);
-    }
-    if (dateString === selectedDate) cell.classList.add("selected");
-    cell.addEventListener("click", () => selectDay(dateString));
-    grid.appendChild(cell);
+  let html = WEEKDAYS.map((name) => `<div class="weekday">${name}</div>`).join("");
+  html += '<div class="day empty"></div>'.repeat(blanks);
+  for (let n = 1; n <= daysInMonth; n++) {
+    const date = toDateString(new Date(shownYear, shownMonth, n));
+    const { treats = 0, star = false } = byDate[date] || {};
+    // Treats win over a star; show "×2" etc. when a day has more than one treat.
+    const icon = treats ? ICONS.treat + (treats > 1 ? `×${treats}` : "") : star ? ICONS.star : "";
+    const classes = ["day", date === today && "today", date === selectedDate && "selected"]
+      .filter(Boolean).join(" ");
+    html += `<button type="button" class="${classes}" data-date="${date}">` +
+      `<span>${n}</span><span class="icon">${icon}</span></button>`;
   }
+  $("calendar-grid").innerHTML = html;
 
-  renderDayPicker();
-}
-
-// ---- Day picker (tap a day to choose treat, star or clear) ----
-
-let selectedDate = null;
-
-function selectDay(dateString) {
-  selectedDate = dateString;
-  renderCalendar();
-}
-
-function renderDayPicker() {
-  const picker = document.getElementById("day-picker");
-  picker.hidden = selectedDate === null;
-  if (selectedDate === null) return;
-
-  const [y, m, d] = selectedDate.split("-").map(Number);
-  document.getElementById("picked-date").textContent = new Date(y, m - 1, d)
-    .toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
-}
-
-function applyToSelected(action) {
-  if (selectedDate === null) return;
-  action(selectedDate);
-  renderHome();
-  renderCalendar();
+  // Day picker for the tapped day.
+  $("day-picker").hidden = selectedDate === null;
+  if (selectedDate !== null) {
+    $("picked-date").textContent = parseDate(selectedDate)
+      .toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
+  }
 }
 
 function changeMonth(delta) {
@@ -156,29 +111,56 @@ function changeMonth(delta) {
   renderCalendar();
 }
 
+function applyToSelected(action) {
+  if (selectedDate === null) return;
+  action(selectedDate);
+  renderHome();
+  renderCalendar();
+}
+
 // ---- Tabs ----
 
 function showTab(name) {
-  document.getElementById("view-home").hidden = name !== "home";
-  document.getElementById("view-calendar").hidden = name !== "calendar";
-  document.getElementById("tab-home").classList.toggle("active", name === "home");
-  document.getElementById("tab-calendar").classList.toggle("active", name === "calendar");
-
+  for (const tab of ["home", "calendar"]) {
+    $(`view-${tab}`).hidden = tab !== name;
+    $(`tab-${tab}`).classList.toggle("active", tab === name);
+  }
   if (name === "calendar") {
-    // Jump back to the current month so the new icon on today is visible.
-    shownYear = new Date().getFullYear();
-    shownMonth = new Date().getMonth();
+    // Open on the current month so today's new icon is visible.
+    const now = new Date();
+    shownYear = now.getFullYear();
+    shownMonth = now.getMonth();
+    selectedDate = null;
     renderCalendar();
   }
 }
 
-document.getElementById("log-treat").addEventListener("click", logTreat);
-document.getElementById("no-treat").addEventListener("click", logNoTreat);
-document.getElementById("tab-home").addEventListener("click", () => showTab("home"));
-document.getElementById("tab-calendar").addEventListener("click", () => showTab("calendar"));
-document.getElementById("pick-treat").addEventListener("click", () => applyToSelected(addTreat));
-document.getElementById("pick-star").addEventListener("click", () => applyToSelected(setStar));
-document.getElementById("pick-clear").addEventListener("click", () => applyToSelected(clearDay));
-document.getElementById("prev-month").addEventListener("click", () => changeMonth(-1));
-document.getElementById("next-month").addEventListener("click", () => changeMonth(1));
+// ---- Wiring ----
+
+$("log-treat").addEventListener("click", () => logToday(addTreat));
+$("no-treat").addEventListener("click", () => logToday(setStar));
+$("tab-home").addEventListener("click", () => showTab("home"));
+$("tab-calendar").addEventListener("click", () => showTab("calendar"));
+$("prev-month").addEventListener("click", () => changeMonth(-1));
+$("next-month").addEventListener("click", () => changeMonth(1));
+$("pick-treat").addEventListener("click", () => applyToSelected(addTreat));
+$("pick-star").addEventListener("click", () => applyToSelected(setStar));
+$("pick-clear").addEventListener("click", () => applyToSelected(clearDay));
+
+// One listener for the whole grid; it is rebuilt on every render.
+$("calendar-grid").addEventListener("click", (event) => {
+  const cell = event.target.closest("[data-date]");
+  if (!cell) return;
+  selectedDate = cell.dataset.date;
+  renderCalendar();
+});
+
+// A phone app can stay open past midnight. Refresh "today" when you come back to it.
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) return;
+  renderHome();
+  if (!$("view-calendar").hidden) renderCalendar();
+});
+
+showTab("home");
 renderHome();

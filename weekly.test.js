@@ -1,6 +1,6 @@
 // Run with: node weekly.test.js
 const assert = require("node:assert");
-const { countTreatsInWeek, countWeekStreak } = require("./weekly.js");
+const { countTreatsInWeek, countWeekStreak, weekStart, addDays } = require("./weekly.js");
 
 // Calendar reminder for Oct/Nov 2026:
 //   Mon Oct 19 ... Sun Oct 25 | Mon Oct 26 ... Sat Oct 31, Sun Nov 1
@@ -58,6 +58,49 @@ test("No entries gives 0", () => {
   assert.strictEqual(countTreatsInWeek([], "2026-10-20"), 0);
 });
 
+// ---- Week helpers and awkward calendar edges ----
+
+test("weekStart: every day of a week maps to its Monday", () => {
+  for (let day = 19; day <= 25; day++) {
+    assert.strictEqual(weekStart(`2026-10-${day}`), "2026-10-19");
+  }
+});
+
+test("weekStart: crosses month and year boundaries", () => {
+  assert.strictEqual(weekStart("2026-11-01"), "2026-10-26"); // Sunday
+  assert.strictEqual(weekStart("2027-01-01"), "2026-12-28"); // Friday
+});
+
+test("addDays: month, year and leap-day rollovers", () => {
+  assert.strictEqual(addDays("2026-10-31", 1), "2026-11-01");
+  assert.strictEqual(addDays("2026-12-31", 1), "2027-01-01");
+  assert.strictEqual(addDays("2028-02-28", 1), "2028-02-29");
+  assert.strictEqual(addDays("2027-03-01", -1), "2027-02-28");
+});
+
+test("Weeks stay 7 days long across daylight saving changes", () => {
+  // US clocks change on Nov 1 2026 and Mar 14 2027.
+  assert.strictEqual(weekStart("2026-11-01"), "2026-10-26");
+  assert.strictEqual(addDays("2026-10-26", 6), "2026-11-01");
+  assert.strictEqual(weekStart("2027-03-14"), "2027-03-08");
+  assert.strictEqual(addDays("2027-03-08", 7), "2027-03-15");
+});
+
+test("Week crossing New Year counts both years", () => {
+  const entries = [
+    treat(1, "2026-12-27"), // previous week
+    treat(2, "2026-12-28"),
+    treat(3, "2027-01-03"),
+    treat(4, "2027-01-04"), // next week
+  ];
+  assert.strictEqual(countTreatsInWeek(entries, "2027-01-01"), 2);
+});
+
+test("Entries can arrive in any order", () => {
+  const entries = [treat(3, "2026-10-25"), treat(1, "2026-10-19"), treat(2, "2026-10-22")];
+  assert.strictEqual(countTreatsInWeek(entries, "2026-10-23"), 3);
+});
+
 // ---- Week streak ----
 // countWeekStreak(entries, today, limit): consecutive finished weeks, going back
 // from last week, with treats <= limit. The current week is still in progress so
@@ -112,6 +155,28 @@ test("Streak: empty weeks after the first entry count as met", () => {
 test("Streak: first entry in the current week gives 0", () => {
   const entries = [treat(1, "2026-10-27")];
   assert.strictEqual(countWeekStreak(entries, "2026-10-28", 3), 0);
+});
+
+test("Streak: runs across a New Year boundary", () => {
+  const entries = [star(1, "2026-12-15"), ...treats(10, "2026-12-30", 2), ...treats(20, "2027-01-06", 1)];
+  // Weeks of Jan 4, Dec 28, Dec 21 (empty, so met) and Dec 14.
+  assert.strictEqual(countWeekStreak(entries, "2027-01-12", 3), 4);
+});
+
+test("Streak: first entry may be unsorted and a star", () => {
+  const entries = [treat(1, "2026-10-21"), star(2, "2026-10-06")];
+  assert.strictEqual(countWeekStreak(entries, "2026-10-26", 3), 3);
+});
+
+test("Streak: a future-dated entry does not break or extend it", () => {
+  const entries = [...treats(1, "2026-10-21", 1), ...treats(10, "2026-12-01", 9)];
+  assert.strictEqual(countWeekStreak(entries, "2026-10-26", 3), 1);
+});
+
+test("Streak: respects a different limit", () => {
+  const entries = treats(1, "2026-10-21", 2);
+  assert.strictEqual(countWeekStreak(entries, "2026-10-26", 1), 0);
+  assert.strictEqual(countWeekStreak(entries, "2026-10-26", 2), 1);
 });
 
 let failed = 0;

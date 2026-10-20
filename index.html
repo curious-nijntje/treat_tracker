@@ -8,7 +8,7 @@
     body {
       font-family: system-ui, sans-serif;
       margin: 0;
-      padding: 2rem 1rem 5rem; /* bottom room for the tab bar */
+      padding: 2rem 1rem 6rem; /* bottom room for the tab bar */
       text-align: center;
     }
 
@@ -38,19 +38,24 @@
       border: 1px solid #ddd;
       border-radius: 6px;
       padding: 2px;
+      font: inherit;
       font-size: 0.8rem;
+      color: inherit;
+      background: #fff;
+      cursor: pointer;
       display: flex;
       flex-direction: column;
       align-items: center;
+      min-width: 0;
     }
-    .day { cursor: pointer; }
-    .day.empty { border: none; cursor: default; }
+    .day.empty { border: none; background: none; cursor: default; }
+    .day.today { border-color: #333; border-width: 2px; }
     .day.selected { background: #eef; }
+    .day .icon { font-size: 1rem; line-height: 1.2; white-space: nowrap; }
+
     .day-picker { margin-top: 1rem; }
     .day-picker p { margin: 0 0 0.5rem; font-weight: bold; }
     .day-picker button { font-size: 1rem; padding: 0.5rem 1rem; }
-    .day.today { border-color: #333; border-width: 2px; }
-    .day .icon { font-size: 1.25rem; line-height: 1.2; }
 
     /* Bottom tab bar */
     .tab-bar {
@@ -61,6 +66,7 @@
       display: flex;
       border-top: 1px solid #ddd;
       background: #fff;
+      padding-bottom: env(safe-area-inset-bottom); /* iPhone home bar */
     }
     .tab-bar button {
       flex: 1;

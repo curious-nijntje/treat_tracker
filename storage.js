@@ -4,8 +4,8 @@ const STORAGE_KEY = "treatTracker.entries";
 // Returns the list of entries: [{ id, date: "YYYY-MM-DD", type: "treat" | "star" }]
 function loadEntries() {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : [];
+    const entries = JSON.parse(localStorage.getItem(STORAGE_KEY));
+    return Array.isArray(entries) ? entries : []; // missing or damaged data
   } catch (e) {
     return [];
   }
